@@ -8,6 +8,9 @@ let selectedMemberAction = "update";
 let membersPage = 1;
 let logsPage = 1;
 let pendingCardId = null;
+let pendingLogsDeletion = null;
+let pendingMemberDeletionId = null;
+let deleteMemberTrigger = null;
 const membersById = new Map();
 
 function escapeHtml(value) {
@@ -18,6 +21,20 @@ function escapeHtml(value) {
 
 function formatDate(value) {
   return value ? value.slice(0, 10) : "-";
+}
+
+function openAddMemberModal() {
+  const modal = document.getElementById("add-member-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("member-name").focus();
+}
+
+function closeAddMemberModal() {
+  const modal = document.getElementById("add-member-modal");
+  document.getElementById("open-add-member-modal").focus();
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 uid.addEventListener("keydown", (event) => {
@@ -178,6 +195,91 @@ function closeAdminModal() {
   if (!modal) return;
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
+}
+
+function openAdminMenuModal() {
+  const modal = document.getElementById("admin-menu-modal");
+  if (!modal) return;
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeAdminMenuModal() {
+  const modal = document.getElementById("admin-menu-modal");
+  if (!modal) return;
+  document.getElementById("open-admin-menu-modal")?.focus();
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function openAdminMenuAction(openModal) {
+  closeAdminMenuModal();
+  openModal();
+}
+
+function openPurgeModal() {
+  const modal = document.getElementById("purge-modal");
+  if (!modal) return;
+  document.getElementById("purge-form").reset();
+  const result = document.getElementById("purge-result");
+  result.className = "";
+  result.textContent = "";
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("purge-password").focus();
+}
+
+function closePurgeModal() {
+  const modal = document.getElementById("purge-modal");
+  if (!modal) return;
+  document.getElementById("open-admin-menu-modal")?.focus();
+  document.getElementById("purge-form").reset();
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function purgeDatabase(event) {
+  event.preventDefault();
+  const form = event.target;
+  const submitButton = document.getElementById("purge-submit");
+  const result = document.getElementById("purge-result");
+  submitButton.disabled = true;
+  result.className = "";
+  result.textContent = "";
+
+  try {
+    const response = await fetch("/api/admin/purge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": csrfToken,
+      },
+      body: JSON.stringify(Object.fromEntries(new FormData(form))),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const messages = Object.values(payload.errors || {}).flat();
+      throw new Error(messages.join(", ") || payload.message || "Database tidak dapat di-purge.");
+    }
+
+    form.reset();
+    result.className = "result ok";
+    result.textContent = `${payload.message} ${payload.deleted.members} member dan ${payload.deleted.logs} riwayat scan dihapus.`;
+  } catch (error) {
+    result.className = "result bad";
+    result.textContent = error.message || "Database tidak dapat di-purge.";
+    return;
+  } finally {
+    submitButton.disabled = false;
+  }
+
+  try {
+    await loadData();
+  } catch (error) {
+    result.className = "result bad";
+    result.textContent += ` Namun, data dashboard tidak dapat diperbarui: ${error.message}`;
+  }
 }
 
 async function confirmCardEntry() {
@@ -374,23 +476,53 @@ async function updateMember(memberId, form) {
   }
 }
 
-async function deleteMember(memberId, memberName) {
-  if (
-    !confirm(
-      `Hapus member ${memberName}? Data yang sudah dihapus tidak dapat dikembalikan.`,
-    )
-  )
-    return;
-  const response = await fetch(`/api/members/${memberId}`, {
-    method: "DELETE",
-    headers: { Accept: "application/json", "X-CSRF-TOKEN": csrfToken },
-  });
-  if (!response.ok) {
-    const payload = await response.json();
-    alert(payload.message || "Member tidak dapat dihapus.");
-    return;
+function openDeleteMemberModal(memberId) {
+  const member = membersById.get(memberId);
+  if (!member) return;
+
+  pendingMemberDeletionId = memberId;
+  deleteMemberTrigger = document.activeElement;
+  document.getElementById("confirm-delete-member-message").textContent =
+    `Apakah Anda yakin ingin menghapus member ${member.name}? Data yang sudah dihapus tidak dapat dikembalikan.`;
+  const modal = document.getElementById("confirm-delete-member-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  modal.querySelector("button.secondary").focus();
+}
+
+function closeDeleteMemberModal(restoreFocus = true) {
+  const trigger = deleteMemberTrigger;
+  document.activeElement?.blur();
+  pendingMemberDeletionId = null;
+  deleteMemberTrigger = null;
+  const modal = document.getElementById("confirm-delete-member-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  if (restoreFocus && trigger?.isConnected) trigger.focus();
+}
+
+async function confirmDeleteMember() {
+  if (pendingMemberDeletionId === null) return;
+
+  const confirmButton = document.getElementById("confirm-delete-member-button");
+  confirmButton.disabled = true;
+  try {
+    const response = await fetch(`/api/members/${pendingMemberDeletionId}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json", "X-CSRF-TOKEN": csrfToken },
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.message || "Member tidak dapat dihapus.");
+    }
+
+    closeDeleteMemberModal(false);
+    await loadData();
+  } catch (error) {
+    alert(error.message || "Member tidak dapat dihapus.");
+  } finally {
+    confirmButton.disabled = false;
   }
-  loadData();
 }
 
 function openExportModal() {
@@ -409,22 +541,45 @@ function openDeleteLogsModal() {
   const modal = document.getElementById("delete-logs-modal");
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
+  document.getElementById("delete-logs-from").focus();
 }
 
 function closeDeleteLogsModal() {
   const modal = document.getElementById("delete-logs-modal");
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
+  pendingLogsDeletion = null;
+  document.getElementById("delete-logs-open").focus();
 }
 
-async function submitDeleteLogs(event) {
+function closeConfirmDeleteLogsModal() {
+  const modal = document.getElementById("confirm-delete-logs-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  pendingLogsDeletion = null;
+  document.querySelector("#delete-logs-form button[type='submit']").focus();
+}
+
+function submitDeleteLogs(event) {
   event.preventDefault();
   const form = event.target;
-  const data = Object.fromEntries(new FormData(form));
-  if (
-    !confirm(`Hapus seluruh riwayat scan dari ${data.from} sampai ${data.to}?`)
-  )
-    return;
+  pendingLogsDeletion = Object.fromEntries(new FormData(form));
+  document.getElementById("confirm-delete-logs-range").textContent =
+    `Riwayat scan dari ${pendingLogsDeletion.from} sampai ${pendingLogsDeletion.to} akan dihapus. Tindakan ini tidak dapat dibatalkan.`;
+  const modal = document.getElementById("confirm-delete-logs-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  modal.querySelector("button.delete").focus();
+}
+
+async function confirmDeleteLogs() {
+  if (!pendingLogsDeletion) return;
+
+  const data = pendingLogsDeletion;
+  const modal = document.getElementById("confirm-delete-logs-modal");
+  document.querySelector("#delete-logs-form button[type='submit']").focus();
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
   const result = document.getElementById("delete-logs-result");
   try {
     const response = await fetch("/api/logs", {
@@ -446,9 +601,11 @@ async function submitDeleteLogs(event) {
       );
     }
     closeDeleteLogsModal();
+    pendingLogsDeletion = null;
     logsPage = 1;
     loadData();
   } catch (error) {
+    pendingLogsDeletion = null;
     result.className = "result bad";
     result.textContent = error.message;
   }
@@ -529,7 +686,7 @@ async function loadData(showRefreshModal = false) {
   document.getElementById("members").innerHTML = members
     .map(
       (member) =>
-        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td>${escapeHtml(member.status)}</td><td>${member.scan_count || 0}/${member.membership_type === "1 Bulan" ? 4 : member.membership_type === "2 Bulan" ? 9 : "-"}</td><td class="actions"><button type="button" class="update" onclick="openUpdateModal(${member.id})">Update</button><button type="button" class="update" onclick="openExtendModal(${member.id})">Perpanjang</button><button type="button" class="delete" onclick="deleteMember(${member.id}, '${escapeHtml(member.name).replace(/'/g, "\\'")}')">Delete</button></td></tr>`,
+        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td>${escapeHtml(member.status)}</td><td>${member.scan_count || 0}/${member.membership_type === "1 Bulan" ? 4 : member.membership_type === "2 Bulan" ? 9 : "-"}</td><td class="actions"><button type="button" class="update" onclick="openUpdateModal(${member.id})">Update</button><button type="button" class="update" onclick="openExtendModal(${member.id})">Perpanjang</button><button type="button" class="delete" onclick="openDeleteMemberModal(${member.id})">Delete</button></td></tr>`,
     )
     .join("");
   renderMembersPagination(membersPayload);
@@ -598,4 +755,38 @@ allMembersLink.addEventListener("click", (event) => {
   }
 
   requestAnimationFrame(updateProgress);
+});
+
+const dashboardModalClosers = {
+  "add-member-modal": closeAddMemberModal,
+  "admin-menu-modal": closeAdminMenuModal,
+  "scan-modal": closeScanModal,
+  "refresh-modal": closeRefreshModal,
+  "reset-member-modal": closeResetMemberModal,
+  "logout-modal": closeLogoutModal,
+  "purge-modal": closePurgeModal,
+  "password-modal": closePasswordModal,
+  "admin-modal": closeAdminModal,
+  "update-modal": closeUpdateModal,
+  "export-modal": closeExportModal,
+  "confirm-delete-member-modal": closeDeleteMemberModal,
+  "delete-logs-modal": closeDeleteLogsModal,
+  "confirm-delete-logs-modal": closeConfirmDeleteLogsModal,
+};
+
+Object.entries(dashboardModalClosers).forEach(([modalId, closeModal]) => {
+  const modal = document.getElementById(modalId);
+  const content = modal?.querySelector(".modal-content");
+  if (!content) return;
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "modal-close";
+  closeButton.setAttribute("aria-label", "Tutup modal");
+  closeButton.textContent = "×";
+  closeButton.addEventListener("click", () => {
+    closeButton.blur();
+    closeModal();
+  });
+  content.prepend(closeButton);
 });

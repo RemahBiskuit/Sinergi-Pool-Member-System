@@ -11,6 +11,9 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/css/bootstrap-datepicker3.min.css">
     <style>
         body {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
             font-family: Arial, sans-serif;
             background: #f4f7f5;
             margin: 0;
@@ -19,8 +22,17 @@
 
         .wrap {
             max-width: 1200px;
-            margin: auto;
+            width: 100%;
+            flex: 1 0 auto;
+            margin: 0 auto;
             padding: 28px
+        }
+
+        .site-footer {
+            padding: 16px 24px;
+            color: #65766d;
+            font-size: 13px;
+            text-align: center
         }
 
         .top,
@@ -192,16 +204,45 @@
         }
 
         .modal-content {
+            position: relative;
             background: white;
             width: min(650px, 100%);
             max-height: 90vh;
             overflow: auto;
-            padding: 24px;
+            padding: 56px 24px 24px;
             border-radius: 16px;
             box-shadow: 0 8px 30px #0003;
             opacity: 0;
             transform: translateY(8px) scale(.98);
             transition: opacity .2s ease, transform .2s ease
+        }
+
+        .modal-content .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: grid;
+            width: 36px;
+            height: 36px;
+            place-items: center;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: #f4f7f5;
+            color: #17352a;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer
+        }
+
+        .modal-content .modal-close:hover {
+            background: #e4ebe7;
+            color: #a51f1f
+        }
+
+        .modal-content .modal-close:focus-visible {
+            outline: 3px solid #92c5ad;
+            outline-offset: 2px
         }
 
         .modal.open .modal-content {
@@ -275,7 +316,7 @@
         </div>
         <div class="card">
             <div class="section-heading">
-                <h2>Data Member</h2><button type="button" onclick="loadMembers()">Refresh</button>
+                <h2>Data Member</h2><button type="button" onclick="loadMembers(true)">Refresh</button>
             </div>
             <input id="member-search" class="search-input" type="search"
                 placeholder="Cari nama, kode, NIK, telepon, alamat, UID, paket, atau status..." autocomplete="off">
@@ -302,6 +343,7 @@
             </div>
         </div>
     </div>
+    <footer class="site-footer">&copy; {{ now()->year }} by Sinergi Hotel &amp; Villa</footer>
     <div id="edit-modal" class="modal" aria-hidden="true">
         <div class="modal-content">
             <h2>Update Member</h2>
@@ -358,6 +400,22 @@
                 <div class="form-actions"><button type="submit">Perpanjang</button><button type="button"
                         onclick="closeExtend()">Batal</button></div>
             </form>
+        </div>
+    </div>
+    <div id="delete-confirmation-modal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-confirmation-title">
+            <h2 id="delete-confirmation-title">Konfirmasi Hapus Member</h2>
+            <p id="delete-confirmation-message"></p>
+            <div class="form-actions">
+                <button type="button" onclick="closeDeleteConfirmation()">Batal</button>
+                <button id="confirm-delete-member" type="button" class="delete"
+                    onclick="confirmDeleteMember()">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+    <div id="refresh-modal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="refresh-title">
+            <h2 id="refresh-title">Data sudah di-refresh</h2>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>

@@ -14,6 +14,7 @@ Route::middleware('admin')->group(function () {
   Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
   Route::post('/password', [AuthController::class, 'changePassword'])->name('password.change');
   Route::post('/admins', [AuthController::class, 'createAdmin'])->name('admins.create');
+  Route::post('/api/admin/purge', [PoolController::class, 'purgeData'])->middleware('throttle:5,1');
   Route::post('/api/members', [PoolController::class, 'storeMember']);
   Route::put('/api/members/{member}', [PoolController::class, 'updateMember']);
   Route::post('/api/members/{member}/extend', [PoolController::class, 'extendMember']);

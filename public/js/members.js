@@ -3,6 +3,8 @@ const csrfToken = document
   .getAttribute("content");
 const membersById = new Map();
 let selectedMemberId = null;
+let selectedDeleteMemberId = null;
+let deleteTriggerElement = null;
 let allMembers = [];
 
 function escapeHtml(value) {
@@ -15,12 +17,30 @@ function formatDate(value) {
   return value ? value.slice(0, 10) : "-";
 }
 
-async function loadMembers() {
-  const response = await fetch("/api/members/all-records");
-  allMembers = await response.json();
-  membersById.clear();
-  allMembers.forEach((member) => membersById.set(member.id, member));
-  renderMembers();
+async function loadMembers(showRefreshModal = false) {
+  try {
+    const response = await fetch("/api/members/all-records");
+    if (!response.ok) throw new Error("Data member tidak dapat dimuat.");
+
+    allMembers = await response.json();
+    membersById.clear();
+    allMembers.forEach((member) => membersById.set(member.id, member));
+    renderMembers();
+
+    if (showRefreshModal) {
+      const modal = document.getElementById("refresh-modal");
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    }
+  } catch (error) {
+    alert(error.message || "Data member tidak dapat dimuat.");
+  }
+}
+
+function closeRefreshModal() {
+  const modal = document.getElementById("refresh-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 function renderMembers() {
@@ -49,9 +69,57 @@ function renderMembers() {
   document.getElementById("members").innerHTML = members
     .map(
       (member) =>
-        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.nik || "-")}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid || "-")}</td><td>${escapeHtml(member.membership_type)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td class="${member.status === "active" ? "active" : "inactive"}">${escapeHtml(member.status)}</td><td class="actions"><button type="button" onclick="openEdit(${member.id})">Update</button><button type="button" class="extend" onclick="openExtend(${member.id})">Perpanjang</button><button type="button" class="delete" onclick="deleteMember(${member.id}, '${escapeHtml(member.name).replace(/'/g, "\\'")}')">Delete</button></td></tr>`,
+        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.nik || "-")}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid || "-")}</td><td>${escapeHtml(member.membership_type)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td class="${member.status === "active" ? "active" : "inactive"}">${escapeHtml(member.status)}</td><td class="actions"><button type="button" onclick="openEdit(${member.id})">Update</button><button type="button" class="extend" onclick="openExtend(${member.id})">Perpanjang</button><button type="button" class="delete" onclick="openDeleteConfirmation(${member.id})">Delete</button></td></tr>`,
     )
     .join("");
+}
+
+function openDeleteConfirmation(memberId) {
+  const member = membersById.get(memberId);
+  if (!member) return;
+
+  selectedDeleteMemberId = memberId;
+  deleteTriggerElement = document.activeElement;
+  document.getElementById("delete-confirmation-message").textContent =
+    `Apakah Anda yakin ingin menghapus member ${member.name}?`;
+  const modal = document.getElementById("delete-confirmation-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeDeleteConfirmation(restoreFocus = true) {
+  const trigger = deleteTriggerElement;
+  document.activeElement?.blur();
+  selectedDeleteMemberId = null;
+  deleteTriggerElement = null;
+  const modal = document.getElementById("delete-confirmation-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  if (restoreFocus && trigger?.isConnected) trigger.focus();
+}
+
+async function confirmDeleteMember() {
+  if (selectedDeleteMemberId === null) return;
+
+  const confirmButton = document.getElementById("confirm-delete-member");
+  confirmButton.disabled = true;
+  try {
+    const response = await fetch(`/api/members/${selectedDeleteMemberId}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json", "X-CSRF-TOKEN": csrfToken },
+    });
+    if (!response.ok) {
+      alert("Member tidak dapat dihapus.");
+      return;
+    }
+
+    closeDeleteConfirmation(false);
+    await loadMembers();
+  } catch (error) {
+    alert(error.message || "Member tidak dapat dihapus.");
+  } finally {
+    confirmButton.disabled = false;
+  }
 }
 
 function openEdit(memberId) {
@@ -72,12 +140,16 @@ function openEdit(memberId) {
     member.valid_until,
   );
   document.getElementById("edit-status").value = member.status;
-  document.getElementById("edit-modal").classList.add("open");
+  const modal = document.getElementById("edit-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
 }
 
 function closeEdit() {
   selectedMemberId = null;
-  document.getElementById("edit-modal").classList.remove("open");
+  const modal = document.getElementById("edit-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 function openExtend(memberId) {
@@ -93,11 +165,15 @@ function openExtend(memberId) {
     member.valid_until,
   );
   document.getElementById("extend-status").value = "active";
-  document.getElementById("extend-modal").classList.add("open");
+  const modal = document.getElementById("extend-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
 }
 
 function closeExtend() {
-  document.getElementById("extend-modal").classList.remove("open");
+  const modal = document.getElementById("extend-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 async function submitExtend(event) {
@@ -152,17 +228,30 @@ async function submitEdit(event) {
   loadMembers();
 }
 
-async function deleteMember(memberId, name) {
-  if (!confirm(`Hapus member ${name}?`)) return;
-  const response = await fetch(`/api/members/${memberId}`, {
-    method: "DELETE",
-    headers: { Accept: "application/json", "X-CSRF-TOKEN": csrfToken },
-  });
-  if (!response.ok) return alert("Member tidak dapat dihapus.");
-  loadMembers();
-}
-
 loadMembers();
 document
   .getElementById("member-search")
   .addEventListener("input", renderMembers);
+
+[
+  ["edit-modal", closeEdit],
+  ["extend-modal", closeExtend],
+  ["delete-confirmation-modal", closeDeleteConfirmation],
+  ["refresh-modal", closeRefreshModal],
+].forEach(([modalId, closeModal]) => {
+  const content = document
+    .getElementById(modalId)
+    ?.querySelector(".modal-content");
+  if (!content) return;
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "modal-close";
+  closeButton.setAttribute("aria-label", "Tutup modal");
+  closeButton.textContent = "×";
+  closeButton.addEventListener("click", () => {
+    closeButton.blur();
+    closeModal();
+  });
+  content.prepend(closeButton);
+});

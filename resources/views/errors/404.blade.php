@@ -13,14 +13,22 @@
         }
 
         body {
-            display: grid;
+            display: flex;
             min-height: 100vh;
-            place-items: center;
+            flex-direction: column;
             margin: 0;
             padding: 24px;
             background: #f4f7f5;
             color: #17352a;
             font-family: Arial, sans-serif
+        }
+
+        .site-footer {
+            width: 100%;
+            margin-top: auto;
+            color: #65766d;
+            font-size: 13px;
+            text-align: center
         }
 
         .error-card {
@@ -99,6 +107,7 @@
         <p>Maaf, halaman yang Anda cari tidak tersedia atau alamatnya sudah berubah.</p>
         <a class="back-link" href="{{ route('dashboard') }}">Kembali ke halaman utama</a>
     </main>
+    <footer class="site-footer">&copy; {{ now()->year }} by Sinergi Hotel &amp; Villa</footer>
 </body>
 
 </html>

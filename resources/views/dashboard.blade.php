@@ -11,6 +11,9 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/css/bootstrap-datepicker3.min.css">
     <style>
         body {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
             font-family: Arial, sans-serif;
             background: #f4f7f5;
             margin: 0;
@@ -19,8 +22,17 @@
 
         .wrap {
             max-width: 1100px;
-            margin: auto;
+            width: 100%;
+            flex: 1 0 auto;
+            margin: 0 auto;
             padding: 28px
+        }
+
+        .site-footer {
+            padding: 16px 24px;
+            color: #65766d;
+            font-size: 13px;
+            text-align: center
         }
 
         .top {
@@ -159,6 +171,20 @@
             margin-top: 12px
         }
 
+        .admin-menu-actions {
+            display: grid;
+            gap: 10px;
+            margin-top: 16px
+        }
+
+        .admin-menu-actions button {
+            width: 100%
+        }
+
+        .admin-menu-actions button.delete {
+            background: #a51f1f
+        }
+
         .form-grid label,
         .scan label {
             display: block;
@@ -242,6 +268,15 @@
             background: #a51f1f
         }
 
+        .modal-content button.delete {
+            background: #a51f1f
+        }
+
+        .form-actions button.delete,
+        .top .form-actions button.delete {
+            background: #a51f1f
+        }
+
         .modal {
             position: fixed;
             inset: 0;
@@ -263,14 +298,43 @@
         }
 
         .modal-content {
+            position: relative;
             background: white;
             width: min(420px, 100%);
-            padding: 24px;
+            padding: 56px 24px 24px;
             border-radius: 16px;
             box-shadow: 0 8px 30px #0003;
             opacity: 0;
             transform: translateY(8px) scale(.98);
             transition: opacity .2s ease, transform .2s ease
+        }
+
+        .modal-content .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: grid;
+            width: 36px;
+            height: 36px;
+            place-items: center;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: #f4f7f5;
+            color: #17352a;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer
+        }
+
+        .modal-content .modal-close:hover {
+            background: #e4ebe7;
+            color: #a51f1f
+        }
+
+        .modal-content .modal-close:focus-visible {
+            outline: 3px solid #92c5ad;
+            outline-offset: 2px
         }
 
         .modal.open .modal-content {
@@ -417,6 +481,18 @@
             gap: 16px
         }
 
+        .add-member-trigger {
+            width: 100%;
+            margin: 16px 0;
+            font-weight: bold
+        }
+
+        .member-modal-content {
+            width: min(720px, 100%);
+            max-height: calc(100vh - 32px);
+            overflow-y: auto
+        }
+
         @media(max-width:700px) {
 
             .grid,
@@ -446,15 +522,13 @@
             <div class="brand">
                 <img src="{{ asset('images/sinergi-logo.png') }}" alt="Sinergi Hotel and Villa">
                 <div>
-                    <h1>Sinergi Pool Member</h1>
-                    <div class="hint">NFC / RFID USB Reader</div>
+                    <h1>Swimming Pool Member System</h1>
                 </div>
             </div>
             <div class="form-actions"><button type="button" onclick="loadData(true)">Refresh</button>
                 @if (session('admin_role') === 'superadmin')
-                    <button type="button" class="password-button"
-                        onclick="openPasswordModal()">Ubah Password</button>
-                    <button type="button" class="password-button" onclick="openAdminModal()">Tambah User</button>
+                    <button id="open-admin-menu-modal" type="button" class="password-button"
+                        onclick="openAdminMenuModal()">Menu Admin</button>
                 @endif
                 <button type="button" class="secondary" onclick="openLogoutModal()">Logout</button>
             </div>
@@ -474,41 +548,8 @@
                 <h2 id="scans">0</h2>
             </div>
         </div>
-
-        <div class="card">
-            <h2>Tambah Member dan ID Card</h2>
-            <p class="hint">Isi data member, lalu tempelkan kartu pada kolom NFC UID jika menggunakan reader USB.</p>
-            <form id="member-form" onsubmit="submitMember(event)">
-                <div class="form-grid">
-                    <div><label for="member-name">Nama member</label><input id="member-name" name="name" required
-                            maxlength="100" placeholder="Nama member"></div>
-                    <div><label for="created-date">Tanggal pembuatan</label><input id="created-date" name="created_date"
-                            class="js-datepicker" required type="text" value="{{ now()->toDateString() }}"
-                            placeholder="YYYY-MM-DD" autocomplete="off"></div>
-                    <div><label for="member-nik">NIK</label><input id="member-nik" name="nik" required
-                            maxlength="30" placeholder="NIK"></div>
-                    <div><label for="member-phone">Nomor telepon</label><input id="member-phone" name="phone" required
-                            maxlength="30" placeholder="Nomor telepon"></div>
-                    <div><label for="member-address">Alamat</label><input id="member-address" name="address"
-                            maxlength="500" placeholder="Alamat"></div>
-                    <div><label for="room-number">Nomor kamar</label><input id="room-number" name="room_number"
-                            maxlength="30" placeholder="Nomor kamar (opsional)"></div>
-                    <div><label for="membership-type">Paket membership</label><select id="membership-type"
-                            name="membership_type" required>
-                            <option value="1 Bulan">1 Bulan</option>
-                            <option value="2 Bulan">2 Bulan</option>
-                        </select></div>
-                    <div><label for="valid-until">Berlaku sampai</label><input id="valid-until" name="valid_until"
-                            class="js-datepicker" required type="text" placeholder="YYYY-MM-DD"
-                            autocomplete="off"></div>
-                    <div><label for="member-nfc-uid">NFC UID / ID card</label><input id="member-nfc-uid" name="nfc_uid"
-                            required maxlength="100" autocomplete="off" placeholder="NFC UID / ID card"></div>
-                </div>
-                <div class="form-actions"><button type="submit">Simpan Member + ID Card</button><button type="button"
-                        class="secondary" onclick="resetMemberForm()">Reset</button></div>
-            </form>
-            <div id="member-result"></div>
-        </div>
+        <button id="open-add-member-modal" class="add-member-trigger" type="button"
+            onclick="openAddMemberModal()">Tambah Member dan ID Card</button>
 
         <div class="card">
             <h2>Scan Kartu</h2>
@@ -520,6 +561,46 @@
                     onclick="scanCardInfo()">Scan Kartu</button>
             </div>
             <div id="result"></div>
+        </div>
+        <div id="add-member-modal" class="modal" aria-hidden="true">
+            <div class="modal-content member-modal-content" role="dialog" aria-modal="true"
+                aria-labelledby="add-member-title">
+                <h2 id="add-member-title">Tambah Member dan ID Card</h2>
+                <p class="hint">Isi data member, lalu tempelkan kartu pada kolom NFC UID jika menggunakan reader USB.</p>
+                <form id="member-form" onsubmit="submitMember(event)">
+                    <div class="form-grid">
+                        <div><label for="member-name">Nama member</label><input id="member-name" name="name" required
+                                maxlength="100" placeholder="Nama member"></div>
+                        <div><label for="created-date">Tanggal pembuatan</label><input id="created-date"
+                                name="created_date" class="js-datepicker" required type="text"
+                                value="{{ now()->toDateString() }}" placeholder="YYYY-MM-DD" autocomplete="off"></div>
+                        <div><label for="member-nik">NIK</label><input id="member-nik" name="nik" required
+                                maxlength="30" placeholder="NIK"></div>
+                        <div><label for="member-phone">Nomor telepon</label><input id="member-phone" name="phone"
+                                required maxlength="30" placeholder="Nomor telepon"></div>
+                        <div><label for="member-address">Alamat</label><input id="member-address" name="address"
+                                maxlength="500" placeholder="Alamat"></div>
+                        <div><label for="room-number">Nomor kamar</label><input id="room-number" name="room_number"
+                                maxlength="30" placeholder="Nomor kamar (opsional)"></div>
+                        <div><label for="membership-type">Paket membership</label><select id="membership-type"
+                                name="membership_type" required>
+                                <option value="1 Bulan">1 Bulan</option>
+                                <option value="2 Bulan">2 Bulan</option>
+                            </select></div>
+                        <div><label for="valid-until">Berlaku sampai</label><input id="valid-until"
+                                name="valid_until" class="js-datepicker" required type="text"
+                                placeholder="YYYY-MM-DD" autocomplete="off"></div>
+                        <div><label for="member-nfc-uid">NFC UID / ID card</label><input id="member-nfc-uid"
+                                name="nfc_uid" required maxlength="100" autocomplete="off"
+                                placeholder="NFC UID / ID card"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit">Simpan Member + ID Card</button>
+                        <button type="button" class="secondary" onclick="resetMemberForm()">Reset</button>
+                    </div>
+                </form>
+                <div id="member-result"></div>
+            </div>
         </div>
         <div id="scan-modal" class="modal" aria-hidden="true">
             <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="scan-title">
@@ -538,17 +619,11 @@
         <div id="refresh-modal" class="modal" aria-hidden="true">
             <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="refresh-title">
                 <h2 id="refresh-title">Data sudah di-refresh</h2>
-                <div class="form-actions">
-                    <button type="button" onclick="closeRefreshModal()">Tutup</button>
-                </div>
             </div>
         </div>
         <div id="reset-member-modal" class="modal" aria-hidden="true">
             <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="reset-member-title">
                 <h2 id="reset-member-title">Semua data tambah member sudah dihapus</h2>
-                <div class="form-actions">
-                    <button type="button" onclick="closeResetMemberModal()">Tutup</button>
-                </div>
             </div>
         </div>
         <div id="logout-modal" class="modal" aria-hidden="true">
@@ -562,6 +637,36 @@
             </div>
         </div>
         @if (session('admin_role') === 'superadmin')
+            <div id="admin-menu-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="admin-menu-title">
+                    <h2 id="admin-menu-title">Menu Admin</h2>
+                    <div class="admin-menu-actions">
+                        <button type="button" class="password-button"
+                            onclick="openAdminMenuAction(openPasswordModal)">Ubah Password</button>
+                        <button type="button" class="password-button"
+                            onclick="openAdminMenuAction(openAdminModal)">Tambah User</button>
+                        <button type="button" class="delete"
+                            onclick="openAdminMenuAction(openPurgeModal)">Purge Database</button>
+                    </div>
+                </div>
+            </div>
+            <div id="purge-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="alertdialog" aria-modal="true"
+                    aria-labelledby="purge-title" aria-describedby="purge-description">
+                    <h2 id="purge-title">Purge Database</h2>
+                    <p id="purge-description" class="hint">Tindakan ini akan menghapus semua data member dan riwayat scan secara permanen. Data akun admin tidak akan dihapus.</p>
+                    <form id="purge-form" onsubmit="purgeDatabase(event)">
+                        <label for="purge-password">Password superadmin</label>
+                        <input id="purge-password" name="password" type="password" required
+                            autocomplete="current-password">
+                        <div class="form-actions">
+                            <button id="purge-submit" type="submit" class="delete">Hapus Semua Data</button>
+                            <button type="button" class="secondary" onclick="closePurgeModal()">Batal</button>
+                        </div>
+                    </form>
+                    <div id="purge-result" aria-live="polite"></div>
+                </div>
+            </div>
             <div id="password-modal" class="modal" aria-hidden="true">
                 <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="password-title">
                     <h2 id="password-title">Ubah Password Admin</h2>
@@ -687,10 +792,26 @@
                 </form>
             </div>
         </div>
+        <div id="confirm-delete-member-modal" class="modal" aria-hidden="true">
+            <div class="modal-content" role="alertdialog" aria-modal="true"
+                aria-labelledby="confirm-delete-member-title" aria-describedby="confirm-delete-member-message">
+                <h2 id="confirm-delete-member-title">Yakin ingin menghapus member?</h2>
+                <p id="confirm-delete-member-message" class="hint"></p>
+                <div class="form-actions">
+                    <button id="confirm-delete-member-button" type="button" class="delete"
+                        onclick="confirmDeleteMember()">Ya, Hapus Member</button>
+                    <button type="button" class="secondary" onclick="closeDeleteMemberModal()">Batal</button>
+                </div>
+            </div>
+        </div>
         <div id="logs-card" class="card">
             <h2>Riwayat Scan</h2>
-            <div class="logs-actions"><button type="button" onclick="openExportModal()">Export PDF</button><button
-                    type="button" class="delete" onclick="openDeleteLogsModal()">Hapus Riwayat</button></div>
+            <div class="logs-actions"><button type="button" onclick="openExportModal()">Export PDF</button>
+                @if (session('admin_role') === 'superadmin')
+                    <button id="delete-logs-open" type="button" class="delete"
+                        onclick="openDeleteLogsModal()">Hapus Riwayat</button>
+                @endif
+            </div>
             <div class="print-only">
                 <p>Sinergi Pool Member - Riwayat Scan</p>
             </div>
@@ -727,24 +848,38 @@
                 <div id="export-result"></div>
             </div>
         </div>
-        <div id="delete-logs-modal" class="modal" aria-hidden="true">
-            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-logs-title">
-                <h2 id="delete-logs-title">Hapus Riwayat Scan</h2>
-                <p class="hint">Pilih rentang tanggal riwayat yang akan dihapus.</p>
-                <form id="delete-logs-form" onsubmit="submitDeleteLogs(event)">
-                    <label for="delete-logs-from">Dari tanggal</label>
-                    <input id="delete-logs-from" name="from" class="js-datepicker" type="text" required
-                        placeholder="YYYY-MM-DD" autocomplete="off">
-                    <label for="delete-logs-to">Sampai tanggal</label>
-                    <input id="delete-logs-to" name="to" class="js-datepicker" type="text" required
-                        placeholder="YYYY-MM-DD" autocomplete="off">
-                    <div class="form-actions"><button type="submit" class="delete">Hapus Riwayat</button><button
-                            type="button" class="secondary" onclick="closeDeleteLogsModal()">Batal</button></div>
-                </form>
-                <div id="delete-logs-result"></div>
+        @if (session('admin_role') === 'superadmin')
+            <div id="delete-logs-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-logs-title">
+                    <h2 id="delete-logs-title">Hapus Riwayat Scan</h2>
+                    <p class="hint">Pilih rentang tanggal riwayat yang akan dihapus.</p>
+                    <form id="delete-logs-form" onsubmit="submitDeleteLogs(event)">
+                        <label for="delete-logs-from">Dari tanggal</label>
+                        <input id="delete-logs-from" name="from" class="js-datepicker" type="text" required
+                            placeholder="YYYY-MM-DD" autocomplete="off">
+                        <label for="delete-logs-to">Sampai tanggal</label>
+                        <input id="delete-logs-to" name="to" class="js-datepicker" type="text" required
+                            placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="form-actions"><button type="submit" class="delete">Hapus Riwayat</button><button
+                                type="button" class="secondary" onclick="closeDeleteLogsModal()">Batal</button></div>
+                    </form>
+                    <div id="delete-logs-result"></div>
+                </div>
             </div>
-        </div>
+            <div id="confirm-delete-logs-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="alertdialog" aria-modal="true"
+                    aria-labelledby="confirm-delete-logs-title" aria-describedby="confirm-delete-logs-range">
+                    <h2 id="confirm-delete-logs-title">Yakin ingin menghapus riwayat?</h2>
+                    <p id="confirm-delete-logs-range" class="hint"></p>
+                    <div class="form-actions">
+                        <button type="button" class="delete" onclick="confirmDeleteLogs()">Ya, Hapus Riwayat</button>
+                        <button type="button" class="secondary" onclick="closeConfirmDeleteLogsModal()">Batal</button>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
+    <footer class="site-footer">&copy; {{ now()->year }} by Sinergi Hotel &amp; Villa</footer>
     <div id="page-loading" class="page-loading" aria-hidden="true">
         <div class="page-loading-content">
             <img class="page-loading-logo" src="{{ asset('images/sinergi-logo.png') }}"

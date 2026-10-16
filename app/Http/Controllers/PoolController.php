@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Member;
 use App\Models\PoolAccessLog;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -69,11 +70,40 @@ class PoolController extends Controller
   }
   public function destroyLogs(Request $r)
   {
+    $admin = DB::table('admins')->where('id', $r->session()->get('admin_id'))->first();
+    if (!$admin || ($admin->role ?? null) !== 'superadmin') {
+      abort(403);
+    }
+
     $filters = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from']);
     $deleted = PoolAccessLog::whereDate('scanned_at', '>=', $filters['from'])
       ->whereDate('scanned_at', '<=', $filters['to'])
       ->delete();
     return response()->json(['message' => $deleted . ' riwayat scan berhasil dihapus.']);
+  }
+  public function purgeData(Request $r)
+  {
+    $data = $r->validate(['password' => 'required|string']);
+    $admin = DB::table('admins')->where('id', $r->session()->get('admin_id'))->first();
+
+    if (!$admin || ($admin->role ?? null) !== 'superadmin') {
+      abort(403);
+    }
+    if (!Hash::check($data['password'], $admin->password)) {
+      return response()->json(['message' => 'Password superadmin tidak sesuai.'], 422);
+    }
+
+    $deleted = DB::transaction(function () {
+      $logs = PoolAccessLog::query()->delete();
+      $members = Member::query()->delete();
+
+      return compact('members', 'logs');
+    });
+
+    return response()->json([
+      'message' => 'Semua data member dan riwayat scan berhasil dihapus.',
+      'deleted' => $deleted,
+    ]);
   }
   public function storeMember(Request $r)
   {
