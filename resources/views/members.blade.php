@@ -9,15 +9,28 @@
     <link rel="icon" type="image/png" href="{{ asset('images/sinergi-favicon.png') }}">
     <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/css/bootstrap-datepicker3.min.css">
+    <link rel="stylesheet" href="{{ asset('css/button-glow.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/liquid-select.css') }}">
     <style>
         body {
+            position: relative;
             display: flex;
             min-height: 100vh;
             flex-direction: column;
-            font-family: Arial, sans-serif;
-            background: #f4f7f5;
+            isolation: isolate;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+            background: #e9f0f3;
             margin: 0;
             color: #17352a
+        }
+
+        body::before {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: url("{{ asset('images/sinergi-pool-background.png') }}") center / max(105vw, 140vh) auto no-repeat;
+            content: "";
+            opacity: .1
         }
 
         .wrap {
@@ -29,10 +42,12 @@
         }
 
         .site-footer {
+            box-sizing: border-box;
             padding: 16px 24px;
-            color: #65766d;
+            color: #314b55;
             font-size: 13px;
-            text-align: center
+            text-align: center;
+            text-shadow: 0 1px 8px rgba(255, 255, 255, .8)
         }
 
         .top,
@@ -61,16 +76,19 @@
         }
 
         .card {
-            background: white;
-            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, .68);
+            background: rgba(239, 248, 250, .66);
+            border-radius: 24px;
             padding: 20px;
-            box-shadow: 0 4px 18px #0001;
+            box-shadow: 0 18px 48px rgba(8, 28, 38, .14), inset 0 1px 0 rgba(255, 255, 255, .72);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(24px) saturate(180%);
             margin: 16px 0
         }
 
         .hint {
             font-size: 13px;
-            color: #65766d
+            color: #405a61
         }
 
         .search-input {
@@ -93,7 +111,7 @@
         td {
             text-align: left;
             padding: 10px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid rgba(255, 255, 255, .58);
             vertical-align: top
         }
 
@@ -110,12 +128,34 @@
 
         button,
         .button-link {
-            background: #1d6b4d;
+            background: linear-gradient(135deg, #247c61, #155b48);
             color: white;
             border: 0;
             cursor: pointer;
             text-decoration: none;
-            display: inline-block
+            display: inline-block;
+            box-shadow: 0 8px 18px rgba(21, 91, 72, .2);
+            transition: transform .18s ease, box-shadow .18s ease
+        }
+
+        button:hover,
+        .button-link:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 11px 22px rgba(21, 91, 72, .26)
+        }
+
+        input,
+        select {
+            background: rgba(255, 255, 255, .58);
+            color: #17352a;
+            border-color: rgba(255, 255, 255, .76);
+            box-shadow: inset 0 1px 3px rgba(20, 50, 65, .06)
+        }
+
+        input:focus-visible,
+        select:focus-visible {
+            border-color: rgba(29, 107, 77, .65);
+            outline: 3px solid rgba(29, 107, 77, .18)
         }
 
         button.delete {
@@ -128,11 +168,19 @@
             box-sizing: border-box;
             padding: 8px;
             color: #17352a;
-            background: #fff;
-            border: 1px solid #ccd8d2;
-            border-radius: 10px;
-            box-shadow: 0 8px 24px #0002;
-            z-index: 2000 !important
+            border: 1px solid rgba(255, 255, 255, .78);
+            border-radius: 16px;
+            background: rgba(239, 248, 250, .78);
+            box-shadow: 0 18px 48px rgba(8, 28, 38, .22), inset 0 1px 0 rgba(255, 255, 255, .86);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(24px) saturate(180%);
+            transform-origin: top center;
+            animation: datepicker-appear .32s cubic-bezier(.2, .8, .2, 1) both;
+            z-index: 4000 !important
+        }
+
+        .datepicker-dropdown.datepicker-orient-top {
+            transform-origin: bottom center
         }
 
         .datepicker-dropdown table {
@@ -142,6 +190,13 @@
             border-collapse: collapse;
             margin: 0;
             font-size: 13px
+        }
+
+        .datepicker-dropdown table,
+        .datepicker-dropdown table tr,
+        .datepicker-dropdown table tr td,
+        .datepicker-dropdown table tr th {
+            background: transparent
         }
 
         .datepicker-dropdown table tr td,
@@ -155,11 +210,62 @@
             line-height: 32px
         }
 
+        .datepicker-dropdown table tr td.day,
+        .datepicker-dropdown table tr th.datepicker-switch,
+        .datepicker-dropdown table tr th.prev,
+        .datepicker-dropdown table tr th.next {
+            border-radius: 8px;
+            transition: background-color .16s ease, color .16s ease, transform .16s ease
+        }
+
+        .datepicker-dropdown table tr td.day:hover,
+        .datepicker-dropdown table tr th.datepicker-switch:hover,
+        .datepicker-dropdown table tr th.prev:hover,
+        .datepicker-dropdown table tr th.next:hover {
+            background: rgba(255, 255, 255, .62) !important;
+            color: #155b48;
+            transform: scale(1.06)
+        }
+
+        .datepicker-dropdown table tr td.today,
+        .datepicker-dropdown table tr td.today:hover {
+            border-radius: 8px;
+            background: rgba(29, 107, 77, .16) !important;
+            background-image: none !important;
+            color: #155b48
+        }
+
         .datepicker-dropdown table tr td.active,
         .datepicker-dropdown table tr td.active:hover,
         .datepicker-dropdown table tr td span.active {
-            background: #1d6b4d !important;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #247c61, #155b48) !important;
             background-image: none !important
+        }
+
+        @keyframes datepicker-appear {
+            from {
+                opacity: 0;
+                transform: translateY(-7px) scale(.94)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1)
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .datepicker-dropdown {
+                animation: none
+            }
+
+            .datepicker-dropdown table tr td.day,
+            .datepicker-dropdown table tr th.datepicker-switch,
+            .datepicker-dropdown table tr th.prev,
+            .datepicker-dropdown table tr th.next {
+                transition: none
+            }
         }
 
         button.extend {
@@ -186,10 +292,13 @@
         .modal {
             position: fixed;
             inset: 0;
+            z-index: 3000;
             display: grid;
             place-items: center;
             padding: 16px;
-            background: #17352a66;
+            background: rgba(15, 35, 45, .3);
+            -webkit-backdrop-filter: blur(10px) saturate(140%);
+            backdrop-filter: blur(10px) saturate(140%);
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
@@ -205,13 +314,16 @@
 
         .modal-content {
             position: relative;
-            background: white;
+            border: 1px solid rgba(255, 255, 255, .68);
+            background: rgba(239, 248, 250, .66);
             width: min(650px, 100%);
             max-height: 90vh;
             overflow: auto;
             padding: 56px 24px 24px;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px #0003;
+            border-radius: 24px;
+            box-shadow: 0 24px 70px rgba(8, 28, 38, .28), inset 0 1px 0 rgba(255, 255, 255, .8);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            backdrop-filter: blur(28px) saturate(180%);
             opacity: 0;
             transform: translateY(8px) scale(.98);
             transition: opacity .2s ease, transform .2s ease
@@ -252,7 +364,9 @@
 
         @media (prefers-reduced-motion: reduce) {
             .modal,
-            .modal-content {
+            .modal-content,
+            button,
+            .button-link {
                 transition-duration: 0s
             }
         }
@@ -431,7 +545,9 @@
             container: 'body'
         });
     </script>
+    <script src="{{ asset('js/liquid-select.js') }}"></script>
     <script src="/js/members.js"></script>
+    <script src="{{ asset('js/button-glow.js') }}"></script>
 </body>
 
 </html>

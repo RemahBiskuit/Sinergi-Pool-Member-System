@@ -1,0 +1,48 @@
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+button,
+.button-link,
+.back-link {
+    position: relative;
+    isolation: isolate;
+}
+
+button::before,
+.button-link::before,
+.back-link::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        110px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+        rgba(255, 255, 255, .52),
+        rgba(255, 255, 255, .18) 42%,
+        transparent 76%
+    );
+    content: "";
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    button:hover::before,
+    .button-link:hover::before,
+    .back-link:hover::before {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button::before,
+    .button-link::before,
+    .back-link::before {
+        transition: none;
+    }
+}

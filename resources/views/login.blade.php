@@ -6,24 +6,40 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Login Admin - SINERGI POOL MEMBER SYSTEM</title>
     <link rel="icon" type="image/png" href="{{ asset('images/sinergi-favicon.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/button-glow.css') }}">
     <style>
         body {
+            position: relative;
             display: flex;
             flex-direction: column;
-            font-family: Arial, sans-serif;
-            background: #f4f7f5;
-            color: #17352a;
             min-height: 100vh;
+            isolation: isolate;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+            background: #e9f0f3;
+            color: #17352a;
             margin: 0
+        }
+
+        body::before {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: url("{{ asset('images/sinergi-pool-background.png') }}") center / max(105vw, 140vh) auto no-repeat;
+            content: "";
+            opacity: .2
         }
 
         .login {
             margin: auto;
-            background: white;
-            width: min(380px, calc(100% - 32px));
-            padding: 28px;
-            border-radius: 16px;
-            box-shadow: 0 4px 18px #0001
+            box-sizing: border-box;
+            width: min(440px, calc(100% - 32px));
+            padding: 32px;
+            border: 1px solid rgba(255, 255, 255, .62);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, .38);
+            box-shadow: 0 24px 70px rgba(15, 40, 55, .22), inset 0 1px 0 rgba(255, 255, 255, .8);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(24px) saturate(180%)
         }
 
         .site-footer {
@@ -57,7 +73,8 @@
             display: block;
             margin: 16px 0 6px;
             font-size: 14px;
-            font-weight: bold
+            font-weight: bold;
+            color: #193b4a
         }
 
         input,
@@ -65,22 +82,44 @@
             box-sizing: border-box;
             width: 100%;
             padding: 13px;
-            border: 1px solid #ccd8d2;
-            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, .74);
+            border-radius: 13px;
             font-size: 15px
+        }
+
+        input {
+            background: rgba(255, 255, 255, .62);
+            color: #17352a;
+            box-shadow: inset 0 1px 3px rgba(20, 50, 65, .06)
+        }
+
+        input:focus-visible {
+            border-color: rgba(29, 107, 77, .65);
+            outline: 3px solid rgba(29, 107, 77, .18)
         }
 
         button {
             margin-top: 20px;
-            background: #1d6b4d;
+            background: linear-gradient(135deg, #247c61, #155b48);
             color: white;
             border: 0;
-            cursor: pointer
+            cursor: pointer;
+            font-weight: 700;
+            box-shadow: 0 8px 18px rgba(21, 91, 72, .22);
+            transition: transform .18s ease, box-shadow .18s ease
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 11px 22px rgba(21, 91, 72, .28)
         }
 
         button.forgot-password {
             margin-top: 10px;
-            background: #65766d
+            border: 1px solid rgba(255, 255, 255, .42);
+            background: rgba(42, 67, 72, .56);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px)
         }
 
         .error {
@@ -93,7 +132,26 @@
 
         .hint {
             font-size: 13px;
-            color: #65766d
+            color: #405a61
+        }
+
+        .site-footer {
+            box-sizing: border-box;
+            color: #314b55;
+            text-shadow: 0 1px 8px rgba(255, 255, 255, .8)
+        }
+
+        @media (max-width: 480px) {
+            .login {
+                padding: 26px 22px;
+                border-radius: 24px
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            button {
+                transition: none
+            }
         }
 
         .login-loading {
@@ -161,10 +219,13 @@
         .modal {
             position: fixed;
             inset: 0;
+            z-index: 3000;
             display: grid;
             place-items: center;
             padding: 16px;
-            background: #17352a66;
+            background: rgba(15, 35, 45, .3);
+            -webkit-backdrop-filter: blur(10px) saturate(140%);
+            backdrop-filter: blur(10px) saturate(140%);
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
@@ -180,11 +241,14 @@
 
         .modal-content {
             position: relative;
-            background: white;
+            border: 1px solid rgba(255, 255, 255, .68);
+            background: rgba(239, 248, 250, .66);
             width: min(420px, 100%);
             padding: 56px 24px 24px;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px #0003;
+            border-radius: 24px;
+            box-shadow: 0 24px 70px rgba(8, 28, 38, .28), inset 0 1px 0 rgba(255, 255, 255, .8);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            backdrop-filter: blur(28px) saturate(180%);
             text-align: center;
             opacity: 0;
             transform: translateY(8px) scale(.98);
@@ -361,6 +425,7 @@
             requestAnimationFrame(updateProgress);
         });
     </script>
+    <script src="{{ asset('js/button-glow.js') }}"></script>
 </body>
 
 </html>

@@ -140,6 +140,8 @@ function openEdit(memberId) {
     member.valid_until,
   );
   document.getElementById("edit-status").value = member.status;
+  syncLiquidSelect(document.getElementById("edit-membership-type"));
+  syncLiquidSelect(document.getElementById("edit-status"));
   const modal = document.getElementById("edit-modal");
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
@@ -165,6 +167,8 @@ function openExtend(memberId) {
     member.valid_until,
   );
   document.getElementById("extend-status").value = "active";
+  syncLiquidSelect(document.getElementById("extend-membership-type"));
+  syncLiquidSelect(document.getElementById("extend-status"));
   const modal = document.getElementById("extend-modal");
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");

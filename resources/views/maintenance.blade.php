@@ -7,36 +7,55 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Under Maintenance - Sinergi Pool Member</title>
     <link rel="icon" type="image/png" href="{{ asset('images/sinergi-favicon.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/button-glow.css') }}">
     <style>
         * {
             box-sizing: border-box
         }
 
         body {
+            position: relative;
             display: flex;
             min-height: 100vh;
             flex-direction: column;
+            align-items: center;
+            isolation: isolate;
             margin: 0;
             padding: 24px;
-            background: #f4f7f5;
+            background: #e9f0f3;
             color: #17352a;
-            font-family: Arial, sans-serif
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif
+        }
+
+        body::before {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: url("{{ asset('images/sinergi-pool-background.png') }}") center / max(105vw, 140vh) auto no-repeat;
+            content: "";
+            opacity: .1
         }
 
         .site-footer {
+            box-sizing: border-box;
             width: 100%;
-            margin-top: auto;
-            color: #65766d;
+            padding-top: 24px;
+            color: #314b55;
             font-size: 13px;
-            text-align: center
+            text-align: center;
+            text-shadow: 0 1px 8px rgba(255, 255, 255, .8)
         }
 
         .maintenance-card {
+            margin-block: auto;
             width: min(560px, 100%);
             padding: clamp(28px, 7vw, 48px);
-            border-radius: 20px;
-            background: #fff;
-            box-shadow: 0 4px 24px #00000012;
+            border: 1px solid rgba(255, 255, 255, .68);
+            border-radius: 28px;
+            background: rgba(239, 248, 250, .66);
+            box-shadow: 0 24px 70px rgba(8, 28, 38, .18), inset 0 1px 0 rgba(255, 255, 255, .8);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(24px) saturate(180%);
             text-align: center
         }
 
@@ -53,11 +72,13 @@
             gap: 8px;
             padding: 8px 13px;
             border-radius: 999px;
-            background: #e8f2ed;
+            border: 1px solid rgba(255, 255, 255, .7);
+            background: rgba(255, 255, 255, .48);
             color: #1d6b4d;
             font-size: 12px;
             font-weight: 700;
-            letter-spacing: .08em
+            letter-spacing: .08em;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8)
         }
 
         .status-dot {
@@ -75,7 +96,7 @@
 
         p {
             margin: 0;
-            color: #65766d;
+            color: #405a61;
             font-size: 16px;
             line-height: 1.7
         }
@@ -85,24 +106,27 @@
             height: 3px;
             margin: 28px auto;
             border-radius: 999px;
-            background: #1d6b4d
+            background: linear-gradient(90deg, rgba(29, 107, 77, .45), #1d6b4d, rgba(29, 107, 77, .45))
         }
 
         .back-link {
             display: inline-block;
             margin-top: 28px;
             padding: 12px 18px;
-            border-radius: 10px;
-            background: #1d6b4d;
+            border: 1px solid rgba(255, 255, 255, .34);
+            border-radius: 13px;
+            background: linear-gradient(135deg, #247c61, #155b48);
             color: #fff;
             font-size: 14px;
             font-weight: 700;
             text-decoration: none;
-            transition: background .2s ease
+            box-shadow: 0 8px 18px rgba(21, 91, 72, .22);
+            transition: transform .18s ease, box-shadow .18s ease
         }
 
         .back-link:hover {
-            background: #17583f
+            transform: translateY(-1px);
+            box-shadow: 0 11px 22px rgba(21, 91, 72, .28)
         }
 
         .back-link:focus-visible {
@@ -113,6 +137,16 @@
         @media (prefers-reduced-motion: reduce) {
             .back-link {
                 transition: none
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 16px
+            }
+
+            .maintenance-card {
+                border-radius: 24px
             }
         }
     </style>
@@ -129,6 +163,7 @@
         <a class="back-link" href="{{ route('login') }}">Kembali</a>
     </main>
     <footer class="site-footer">&copy; {{ now()->year }} by Sinergi Hotel &amp; Villa</footer>
+    <script src="{{ asset('js/button-glow.js') }}"></script>
 </body>
 
 </html>

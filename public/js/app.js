@@ -352,6 +352,7 @@ function openUpdateModal(memberId) {
     );
   }
   membershipType.value = member.membership_type;
+  syncLiquidSelect(membershipType);
   document.getElementById("update-valid-until").value = formatDate(
     member.valid_until,
   );
@@ -374,10 +375,12 @@ function openExtendModal(memberId) {
   membershipType.value = ["1 Bulan", "2 Bulan"].includes(member.membership_type)
     ? member.membership_type
     : "1 Bulan";
+  syncLiquidSelect(membershipType);
   document.getElementById("update-valid-until").value = formatDate(
     member.valid_until,
   );
   document.getElementById("update-status").value = "active";
+  syncLiquidSelect(document.getElementById("update-status"));
   const modal = document.getElementById("update-modal");
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
