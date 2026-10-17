@@ -1106,13 +1106,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/js/bootstrap-datepicker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/locales/bootstrap-datepicker.id.min.js"></script>
     <script>
-        $('.js-datepicker').datepicker({
-            format: 'yyyy-mm-dd',
-            language: 'id',
-            autoclose: true,
-            todayHighlight: true,
-            orientation: 'auto',
-            container: 'body'
+        $('.js-datepicker').each(function() {
+            const modalContent = this.closest('.modal-content');
+            $(this).datepicker({
+                format: 'yyyy-mm-dd',
+                language: 'id',
+                autoclose: true,
+                todayHighlight: true,
+                orientation: 'auto',
+                container: modalContent || 'body'
+            });
         });
     </script>
     <script src="{{ asset('js/liquid-select.js') }}"></script>

@@ -9,6 +9,7 @@ let membersPage = 1;
 let logsPage = 1;
 let logsSearchTimer;
 let logsRequestId = 0;
+let logsCardAnimationTimer;
 let pendingCardId = null;
 let pendingLogsDeletion = null;
 let pendingMemberDeletionId = null;
@@ -784,7 +785,62 @@ function renderLogsPagination(meta) {
 
 function changeLogsPage(page) {
   logsPage = page;
-  loadData();
+  loadData(false, true);
+}
+
+function animateLogsCardHeight(updateContent) {
+  const card = document.getElementById("logs-card");
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    updateContent();
+    return;
+  }
+
+  clearTimeout(logsCardAnimationTimer);
+  card.ontransitionend = null;
+  card.style.removeProperty("height");
+  card.style.removeProperty("box-sizing");
+  card.style.removeProperty("overflow");
+  card.style.removeProperty("transition");
+
+  const startHeight = card.getBoundingClientRect().height;
+  card.style.boxSizing = "border-box";
+  card.style.height = `${startHeight}px`;
+  card.style.overflow = "hidden";
+  updateContent();
+
+  card.style.height = "auto";
+  const targetHeight = card.getBoundingClientRect().height;
+  card.style.height = `${startHeight}px`;
+  card.offsetHeight;
+
+  if (Math.abs(targetHeight - startHeight) < 1) {
+    card.style.removeProperty("height");
+    card.style.removeProperty("box-sizing");
+    card.style.removeProperty("overflow");
+    return;
+  }
+
+  card.ontransitionend = (event) => {
+    if (event.target === card && event.propertyName === "height") {
+      clearTimeout(logsCardAnimationTimer);
+      card.ontransitionend = null;
+      card.style.removeProperty("height");
+      card.style.removeProperty("box-sizing");
+      card.style.removeProperty("overflow");
+      card.style.removeProperty("transition");
+    }
+  };
+  requestAnimationFrame(() => {
+    card.style.transition = "height 420ms cubic-bezier(.2, .8, .2, 1)";
+    card.style.height = `${targetHeight}px`;
+  });
+  logsCardAnimationTimer = window.setTimeout(() => {
+    card.ontransitionend = null;
+    card.style.removeProperty("height");
+    card.style.removeProperty("box-sizing");
+    card.style.removeProperty("overflow");
+    card.style.removeProperty("transition");
+  }, 500);
 }
 
 document.getElementById("logs-search").addEventListener("input", () => {
@@ -805,7 +861,7 @@ function changeMembersPage(page) {
   loadData();
 }
 
-async function loadData(showRefreshModal = false) {
+async function loadData(showRefreshModal = false, animateLogsPage = false) {
   const currentLogsRequest = ++logsRequestId;
   const logsParams = new URLSearchParams({
     page: String(logsPage),
@@ -836,22 +892,29 @@ async function loadData(showRefreshModal = false) {
     .join("");
   renderMembersPagination(membersPayload);
   if (currentLogsRequest === logsRequestId) {
-    logsById.clear();
-    logs.forEach((log) => logsById.set(log.id, log));
-    document.getElementById("logs").innerHTML = logs.length
-      ? logs
-          .map(
-            (log) => {
+    const updateLogsContent = () => {
+      const logsTableBody = document.getElementById("logs");
+      logsById.clear();
+      logs.forEach((log) => logsById.set(log.id, log));
+      logsTableBody.innerHTML = logs.length
+        ? logs
+            .map((log) => {
               const actions =
                 window.canManageScanLogs === true
                   ? `<td class="actions"><button type="button" class="update" onclick="openEditLogModal(${log.id})">Update</button><button type="button" class="delete" onclick="openDeleteLogModal(${log.id})">Delete</button></td>`
                   : "";
               return `<tr><td>${new Date(log.scanned_at).toLocaleString("id-ID")}</td><td>${escapeHtml(log.nfc_uid)}</td><td>${escapeHtml(log.member?.name || "-")}</td><td>${escapeHtml(log.result)}</td><td>${escapeHtml(log.reason || "")}</td>${actions}</tr>`;
-            },
-          )
-          .join("")
-      : `<tr><td colspan="${window.canManageScanLogs === true ? 6 : 5}">${document.getElementById("logs-search").value.trim() ? "Tidak ditemukan riwayat scan yang cocok." : "Belum ada riwayat scan."}</td></tr>`;
-    renderLogsPagination(logsPayload);
+            })
+            .join("")
+        : `<tr><td colspan="${window.canManageScanLogs === true ? 6 : 5}">${document.getElementById("logs-search").value.trim() ? "Tidak ditemukan riwayat scan yang cocok." : "Belum ada riwayat scan."}</td></tr>`;
+      renderLogsPagination(logsPayload);
+    };
+
+    if (animateLogsPage) {
+      animateLogsCardHeight(updateLogsContent);
+    } else {
+      updateLogsContent();
+    }
   }
   activeMembers.forEach((member) => membersById.set(member.id, member));
 
