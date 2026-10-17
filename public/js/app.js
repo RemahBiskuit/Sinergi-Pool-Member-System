@@ -7,11 +7,16 @@ let selectedMemberId = null;
 let selectedMemberAction = "update";
 let membersPage = 1;
 let logsPage = 1;
+let logsSearchTimer;
+let logsRequestId = 0;
 let pendingCardId = null;
 let pendingLogsDeletion = null;
 let pendingMemberDeletionId = null;
+let selectedLogId = null;
+let pendingLogDeletionId = null;
 let deleteMemberTrigger = null;
 const membersById = new Map();
+const logsById = new Map();
 
 function escapeHtml(value) {
   const div = document.createElement("div");
@@ -480,6 +485,8 @@ async function updateMember(memberId, form) {
 }
 
 function openDeleteMemberModal(memberId) {
+  if (window.canDeleteMembers !== true) return;
+
   const member = membersById.get(memberId);
   if (!member) return;
 
@@ -505,6 +512,7 @@ function closeDeleteMemberModal(restoreFocus = true) {
 }
 
 async function confirmDeleteMember() {
+  if (window.canDeleteMembers !== true) return;
   if (pendingMemberDeletionId === null) return;
 
   const confirmButton = document.getElementById("confirm-delete-member-button");
@@ -538,6 +546,129 @@ function closeExportModal() {
   const modal = document.getElementById("export-modal");
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
+}
+
+function openEditLogModal(logId) {
+  if (window.canManageScanLogs !== true) return;
+  const log = logsById.get(logId);
+  if (!log) return;
+
+  selectedLogId = logId;
+  const scannedAt = new Date(log.scanned_at);
+  const localScannedAt = new Date(
+    scannedAt.getTime() - scannedAt.getTimezoneOffset() * 60000,
+  )
+    .toISOString()
+    .slice(0, 16);
+  document.getElementById("edit-log-scanned-at").value = localScannedAt;
+  document.getElementById("edit-log-uid").value = log.nfc_uid || "";
+  document.getElementById("edit-log-result").value = log.result || "";
+  document.getElementById("edit-log-reason").value = log.reason || "";
+  const result = document.getElementById("edit-log-result-message");
+  result.className = "";
+  result.textContent = "";
+  const modal = document.getElementById("edit-log-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("edit-log-scanned-at").focus();
+}
+
+function closeEditLogModal() {
+  const modal = document.getElementById("edit-log-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  selectedLogId = null;
+}
+
+async function submitLogUpdate(event) {
+  event.preventDefault();
+  if (window.canManageScanLogs !== true || selectedLogId === null) return;
+
+  const form = event.target;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const result = document.getElementById("edit-log-result-message");
+  const data = Object.fromEntries(new FormData(form));
+  data.scanned_at = new Date(data.scanned_at).toISOString();
+  submitButton.disabled = true;
+  try {
+    const response = await fetch(`/api/logs/${selectedLogId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": csrfToken,
+      },
+      body: JSON.stringify(data),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const messages = Object.values(payload.errors || {}).flat();
+      throw new Error(
+        messages.join(", ") || payload.message || "Riwayat tidak dapat diperbarui.",
+      );
+    }
+    closeEditLogModal();
+    await loadData();
+  } catch (error) {
+    result.className = "result bad";
+    result.textContent = error.message || "Riwayat tidak dapat diperbarui.";
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+function openDeleteLogModal(logId) {
+  if (window.canManageScanLogs !== true) return;
+  const log = logsById.get(logId);
+  if (!log) return;
+
+  pendingLogDeletionId = logId;
+  document.getElementById("delete-log-message").textContent =
+    `Riwayat scan UID ${log.nfc_uid} pada ${new Date(log.scanned_at).toLocaleString("id-ID")} akan dihapus. Tindakan ini tidak dapat dibatalkan.`;
+  const result = document.getElementById("delete-log-result");
+  result.className = "";
+  result.textContent = "";
+  const modal = document.getElementById("delete-log-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("confirm-delete-log-button").focus();
+}
+
+function closeDeleteLogModal() {
+  const modal = document.getElementById("delete-log-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  pendingLogDeletionId = null;
+}
+
+async function confirmDeleteLog() {
+  if (window.canManageScanLogs !== true || pendingLogDeletionId === null) return;
+
+  const logId = pendingLogDeletionId;
+  const confirmButton = document.getElementById("confirm-delete-log-button");
+  const result = document.getElementById("delete-log-result");
+  confirmButton.disabled = true;
+  try {
+    const response = await fetch(`/api/logs/${logId}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "X-CSRF-TOKEN": csrfToken,
+      },
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.message || "Riwayat tidak dapat dihapus.");
+    }
+    closeDeleteLogModal();
+    logsPage = 1;
+    await loadData();
+  } catch (error) {
+    result.className = "result bad";
+    result.textContent = error.message || "Riwayat tidak dapat dihapus.";
+  } finally {
+    confirmButton.disabled = false;
+  }
 }
 
 function openDeleteLogsModal() {
@@ -656,6 +787,12 @@ function changeLogsPage(page) {
   loadData();
 }
 
+document.getElementById("logs-search").addEventListener("input", () => {
+  logsPage = 1;
+  clearTimeout(logsSearchTimer);
+  logsSearchTimer = setTimeout(() => loadData(), 200);
+});
+
 function renderMembersPagination(meta) {
   document.getElementById("members-pagination").innerHTML =
     meta.last_page > 1
@@ -669,9 +806,14 @@ function changeMembersPage(page) {
 }
 
 async function loadData(showRefreshModal = false) {
+  const currentLogsRequest = ++logsRequestId;
+  const logsParams = new URLSearchParams({
+    page: String(logsPage),
+    search: document.getElementById("logs-search").value.trim(),
+  });
   const [membersResponse, logsResponse] = await Promise.all([
     fetch(`/api/members?page=${membersPage}`),
-    fetch(`/api/logs?page=${logsPage}`),
+    fetch(`/api/logs?${logsParams}`),
   ]);
   const [membersPayload, activeMembers] = await Promise.all([
     membersResponse.json(),
@@ -689,17 +831,28 @@ async function loadData(showRefreshModal = false) {
   document.getElementById("members").innerHTML = members
     .map(
       (member) =>
-        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td>${escapeHtml(member.status)}</td><td>${member.scan_count || 0}/${member.membership_type === "1 Bulan" ? 4 : member.membership_type === "2 Bulan" ? 9 : "-"}</td><td class="actions"><button type="button" class="update" onclick="openUpdateModal(${member.id})">Update</button><button type="button" class="update" onclick="openExtendModal(${member.id})">Perpanjang</button><button type="button" class="delete" onclick="openDeleteMemberModal(${member.id})">Delete</button></td></tr>`,
+        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td>${escapeHtml(member.status)}</td><td>${member.scan_count || 0}/${member.membership_type === "1 Bulan" ? 4 : member.membership_type === "2 Bulan" ? 9 : "-"}</td><td class="actions"><button type="button" class="update" onclick="openUpdateModal(${member.id})">Update</button><button type="button" class="extend" onclick="openExtendModal(${member.id})">Perpanjang</button>${window.canDeleteMembers === true ? `<button type="button" class="delete" onclick="openDeleteMemberModal(${member.id})">Delete</button>` : ""}</td></tr>`,
     )
     .join("");
   renderMembersPagination(membersPayload);
-  document.getElementById("logs").innerHTML = logs
-    .map(
-      (log) =>
-        `<tr><td>${new Date(log.scanned_at).toLocaleString("id-ID")}</td><td>${escapeHtml(log.nfc_uid)}</td><td>${escapeHtml(log.member?.name || "-")}</td><td>${escapeHtml(log.result)}</td><td>${escapeHtml(log.reason || "")}</td></tr>`,
-    )
-    .join("");
-  renderLogsPagination(logsPayload);
+  if (currentLogsRequest === logsRequestId) {
+    logsById.clear();
+    logs.forEach((log) => logsById.set(log.id, log));
+    document.getElementById("logs").innerHTML = logs.length
+      ? logs
+          .map(
+            (log) => {
+              const actions =
+                window.canManageScanLogs === true
+                  ? `<td class="actions"><button type="button" class="update" onclick="openEditLogModal(${log.id})">Update</button><button type="button" class="delete" onclick="openDeleteLogModal(${log.id})">Delete</button></td>`
+                  : "";
+              return `<tr><td>${new Date(log.scanned_at).toLocaleString("id-ID")}</td><td>${escapeHtml(log.nfc_uid)}</td><td>${escapeHtml(log.member?.name || "-")}</td><td>${escapeHtml(log.result)}</td><td>${escapeHtml(log.reason || "")}</td>${actions}</tr>`;
+            },
+          )
+          .join("")
+      : `<tr><td colspan="${window.canManageScanLogs === true ? 6 : 5}">${document.getElementById("logs-search").value.trim() ? "Tidak ditemukan riwayat scan yang cocok." : "Belum ada riwayat scan."}</td></tr>`;
+    renderLogsPagination(logsPayload);
+  }
   activeMembers.forEach((member) => membersById.set(member.id, member));
 
   if (showRefreshModal) {
@@ -772,6 +925,8 @@ const dashboardModalClosers = {
   "admin-modal": closeAdminModal,
   "update-modal": closeUpdateModal,
   "export-modal": closeExportModal,
+  "edit-log-modal": closeEditLogModal,
+  "delete-log-modal": closeDeleteLogModal,
   "confirm-delete-member-modal": closeDeleteMemberModal,
   "delete-logs-modal": closeDeleteLogsModal,
   "confirm-delete-logs-modal": closeConfirmDeleteLogsModal,

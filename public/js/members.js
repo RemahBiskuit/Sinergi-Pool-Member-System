@@ -69,12 +69,14 @@ function renderMembers() {
   document.getElementById("members").innerHTML = members
     .map(
       (member) =>
-        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.nik || "-")}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid || "-")}</td><td>${escapeHtml(member.membership_type)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td class="${member.status === "active" ? "active" : "inactive"}">${escapeHtml(member.status)}</td><td class="actions"><button type="button" onclick="openEdit(${member.id})">Update</button><button type="button" class="extend" onclick="openExtend(${member.id})">Perpanjang</button><button type="button" class="delete" onclick="openDeleteConfirmation(${member.id})">Delete</button></td></tr>`,
+        `<tr><td>${escapeHtml(member.member_code)}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(formatDate(member.created_date))}</td><td>${escapeHtml(member.nik || "-")}</td><td>${escapeHtml(member.phone || "-")}</td><td>${escapeHtml(member.address || "-")}</td><td>${escapeHtml(member.room_number || "-")}</td><td>${escapeHtml(member.nfc_uid || "-")}</td><td>${escapeHtml(member.membership_type)}</td><td>${escapeHtml(formatDate(member.valid_until))}</td><td class="${member.status === "active" ? "active" : "inactive"}">${escapeHtml(member.status)}</td><td class="actions"><button type="button" onclick="openEdit(${member.id})">Update</button><button type="button" class="extend" onclick="openExtend(${member.id})">Perpanjang</button>${window.canDeleteMembers === true ? `<button type="button" class="delete" onclick="openDeleteConfirmation(${member.id})">Delete</button>` : ""}</td></tr>`,
     )
     .join("");
 }
 
 function openDeleteConfirmation(memberId) {
+  if (window.canDeleteMembers !== true) return;
+
   const member = membersById.get(memberId);
   if (!member) return;
 
@@ -99,6 +101,7 @@ function closeDeleteConfirmation(restoreFocus = true) {
 }
 
 async function confirmDeleteMember() {
+  if (window.canDeleteMembers !== true) return;
   if (selectedDeleteMemberId === null) return;
 
   const confirmButton = document.getElementById("confirm-delete-member");

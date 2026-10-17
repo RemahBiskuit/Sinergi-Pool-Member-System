@@ -50,9 +50,45 @@ class PoolController extends Controller
     $this->deactivateMembersOverScanLimit();
     return response()->json(Member::latest()->get());
   }
-  public function logs()
+  public function logs(Request $request)
   {
-    $logs = PoolAccessLog::with('member')->latest('scanned_at')->paginate(10);
+    $filters = $request->validate(['search' => 'nullable|string|max:255']);
+    $query = PoolAccessLog::with('member')->latest('scanned_at');
+    $search = trim($filters['search'] ?? '');
+
+    if ($search !== '') {
+      $term = "%{$search}%";
+      $dateMatch = null;
+      $timeMatch = null;
+      if (
+        preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{2}\.\d{2}(?:\.\d{2})?))?$/', $search, $dateParts) &&
+        checkdate((int) $dateParts[2], (int) $dateParts[1], (int) $dateParts[3])
+      ) {
+        $dateMatch = sprintf('%04d-%02d-%02d', $dateParts[3], $dateParts[2], $dateParts[1]);
+        $timeMatch = isset($dateParts[4]) ? str_replace('.', ':', $dateParts[4]) : null;
+      }
+
+      $query->where(function ($query) use ($term, $dateMatch, $timeMatch) {
+        $query->where('scanned_at', 'like', $term)
+          ->orWhere('nfc_uid', 'like', $term)
+          ->orWhere('result', 'like', $term)
+          ->orWhere('reason', 'like', $term)
+          ->orWhereHas('member', function ($memberQuery) use ($term) {
+            $memberQuery->where('name', 'like', $term);
+          });
+
+        if ($dateMatch !== null) {
+          $query->orWhere(function ($dateQuery) use ($dateMatch, $timeMatch) {
+            $dateQuery->whereDate('scanned_at', $dateMatch);
+            if ($timeMatch !== null) {
+              $dateQuery->where('scanned_at', 'like', "%{$timeMatch}%");
+            }
+          });
+        }
+      });
+    }
+
+    $logs = $query->paginate(10);
     return response()->json([
       'data' => $logs->items(),
       'current_page' => $logs->currentPage(),
@@ -70,16 +106,33 @@ class PoolController extends Controller
   }
   public function destroyLogs(Request $r)
   {
-    $admin = DB::table('admins')->where('id', $r->session()->get('admin_id'))->first();
-    if (!$admin || ($admin->role ?? null) !== 'superadmin') {
-      abort(403);
-    }
+    $this->authorizeSuperadmin($r);
 
     $filters = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from']);
     $deleted = PoolAccessLog::whereDate('scanned_at', '>=', $filters['from'])
       ->whereDate('scanned_at', '<=', $filters['to'])
       ->delete();
     return response()->json(['message' => $deleted . ' riwayat scan berhasil dihapus.']);
+  }
+  public function updateLog(Request $request, PoolAccessLog $log)
+  {
+    $this->authorizeSuperadmin($request);
+    $data = $request->validate([
+      'scanned_at' => 'required|date',
+      'nfc_uid' => 'required|string|max:255',
+      'result' => 'required|string|max:255',
+      'reason' => 'nullable|string|max:255',
+    ]);
+    $log->update($data);
+
+    return response()->json($log->fresh()->load('member'));
+  }
+  public function destroyLog(Request $request, PoolAccessLog $log)
+  {
+    $this->authorizeSuperadmin($request);
+    $log->delete();
+
+    return response()->json(['message' => 'Riwayat scan berhasil dihapus.']);
   }
   public function purgeData(Request $r)
   {
@@ -138,8 +191,12 @@ class PoolController extends Controller
     $member->update(['membership_type' => $data['membership_type'], 'valid_until' => $data['valid_until'], 'status' => 'active', 'scan_count' => 0, 'nfc_uid' => $cardUid]);
     return response()->json($member->fresh());
   }
-  public function destroyMember(Member $member)
+  public function destroyMember(Request $request, Member $member)
   {
+    if ($request->session()->get('admin_role') !== 'superadmin') {
+      return response()->json(['message' => 'Tidak memiliki izin untuk menghapus member.'], 403);
+    }
+
     $member->delete();
     return response()->json(['message' => 'Member berhasil dihapus.']);
   }
@@ -172,6 +229,12 @@ class PoolController extends Controller
   private function successfulScanCount(Member $member): int
   {
     return (int) $member->scan_count;
+  }
+
+  private function authorizeSuperadmin(Request $request): void
+  {
+    $admin = DB::table('admins')->where('id', $request->session()->get('admin_id'))->first();
+    abort_unless($admin && ($admin->role ?? null) === 'superadmin', 403);
   }
 
   private function hasReachedScanLimit(Member $member, string $membershipType): bool

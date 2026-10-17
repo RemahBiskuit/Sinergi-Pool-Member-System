@@ -101,6 +101,11 @@
             overflow-x: auto
         }
 
+        .table-wrap table {
+            border-collapse: separate;
+            border-spacing: 0 8px
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -111,8 +116,25 @@
         td {
             text-align: left;
             padding: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, .58);
             vertical-align: top
+        }
+
+        .table-wrap thead th {
+            border-bottom: 1px solid rgba(255, 255, 255, .58)
+        }
+
+        .table-wrap tbody td {
+            padding: 12px 10px;
+            background: rgba(255, 255, 255, .32);
+            vertical-align: middle
+        }
+
+        .table-wrap tbody td:first-child {
+            border-radius: 10px 0 0 10px
+        }
+
+        .table-wrap tbody td:last-child {
+            border-radius: 0 10px 10px 0
         }
 
         button,
@@ -516,17 +538,19 @@
             </form>
         </div>
     </div>
-    <div id="delete-confirmation-modal" class="modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-confirmation-title">
-            <h2 id="delete-confirmation-title">Konfirmasi Hapus Member</h2>
-            <p id="delete-confirmation-message"></p>
-            <div class="form-actions">
-                <button type="button" onclick="closeDeleteConfirmation()">Batal</button>
-                <button id="confirm-delete-member" type="button" class="delete"
-                    onclick="confirmDeleteMember()">Ya, Hapus</button>
+    @if (session('admin_role') === 'superadmin')
+        <div id="delete-confirmation-modal" class="modal" aria-hidden="true">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-confirmation-title">
+                <h2 id="delete-confirmation-title">Konfirmasi Hapus Member</h2>
+                <p id="delete-confirmation-message"></p>
+                <div class="form-actions">
+                    <button type="button" onclick="closeDeleteConfirmation()">Batal</button>
+                    <button id="confirm-delete-member" type="button" class="delete"
+                        onclick="confirmDeleteMember()">Ya, Hapus</button>
+                </div>
             </div>
         </div>
-    </div>
+    @endif
     <div id="refresh-modal" class="modal" aria-hidden="true">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="refresh-title">
             <h2 id="refresh-title">Data sudah di-refresh</h2>
@@ -546,6 +570,9 @@
         });
     </script>
     <script src="{{ asset('js/liquid-select.js') }}"></script>
+    <script>
+        window.canDeleteMembers = @json(session('admin_role') === 'superadmin');
+    </script>
     <script src="/js/members.js"></script>
     <script src="{{ asset('js/button-glow.js') }}"></script>
 </body>

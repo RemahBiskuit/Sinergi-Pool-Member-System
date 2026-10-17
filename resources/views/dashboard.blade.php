@@ -328,11 +328,31 @@
             overflow-x: auto
         }
 
+        .table-wrap table {
+            border-collapse: separate;
+            border-spacing: 0 8px
+        }
+
         th,
         td {
             text-align: left;
             padding: 10px;
             border-bottom: 1px solid #eee
+        }
+
+        .table-wrap tbody td {
+            padding: 12px 10px;
+            border-bottom: 0;
+            background: rgba(255, 255, 255, .32);
+            vertical-align: middle
+        }
+
+        .table-wrap tbody td:first-child {
+            border-radius: 10px 0 0 10px
+        }
+
+        .table-wrap tbody td:last-child {
+            border-radius: 0 10px 10px 0
         }
 
         td.actions {
@@ -365,11 +385,33 @@
             background: #1d6b4d
         }
 
+        td.actions button.extend,
+        td.actions button.extend:hover {
+            background: #246b8f
+        }
+
         .logs-actions {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
             margin-bottom: 12px
+        }
+
+        .logs-search {
+            margin-bottom: 12px
+        }
+
+        .logs-table td.actions {
+            width: 112px;
+            min-width: 112px
+        }
+
+        .logs-table td.actions button.delete {
+            background: #a51f1f
+        }
+
+        .logs-table td.actions button.update {
+            background: #1d6b4d
         }
 
         .logs-actions button.delete {
@@ -569,8 +611,14 @@
             }
 
             .wrap>*:not(#logs-card),
+            #logs-card>.logs-search,
             #logs-card>.logs-actions,
             #logs-pagination {
+                display: none !important
+            }
+
+            #logs-card .logs-table.has-actions th:last-child,
+            #logs-card .logs-table.has-actions td:last-child {
                 display: none !important
             }
 
@@ -908,18 +956,20 @@
                 </form>
             </div>
         </div>
-        <div id="confirm-delete-member-modal" class="modal" aria-hidden="true">
-            <div class="modal-content" role="alertdialog" aria-modal="true"
-                aria-labelledby="confirm-delete-member-title" aria-describedby="confirm-delete-member-message">
-                <h2 id="confirm-delete-member-title">Yakin ingin menghapus member?</h2>
-                <p id="confirm-delete-member-message" class="hint"></p>
-                <div class="form-actions">
-                    <button id="confirm-delete-member-button" type="button" class="delete"
-                        onclick="confirmDeleteMember()">Ya, Hapus Member</button>
-                    <button type="button" class="secondary" onclick="closeDeleteMemberModal()">Batal</button>
+        @if (session('admin_role') === 'superadmin')
+            <div id="confirm-delete-member-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="alertdialog" aria-modal="true"
+                    aria-labelledby="confirm-delete-member-title" aria-describedby="confirm-delete-member-message">
+                    <h2 id="confirm-delete-member-title">Yakin ingin menghapus member?</h2>
+                    <p id="confirm-delete-member-message" class="hint"></p>
+                    <div class="form-actions">
+                        <button id="confirm-delete-member-button" type="button" class="delete"
+                            onclick="confirmDeleteMember()">Ya, Hapus Member</button>
+                        <button type="button" class="secondary" onclick="closeDeleteMemberModal()">Batal</button>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
         <div id="logs-card" class="card">
             <h2>Riwayat Scan</h2>
             <div class="logs-actions"><button type="button" onclick="openExportModal()">Export PDF</button>
@@ -928,11 +978,15 @@
                         onclick="openDeleteLogsModal()">Hapus Riwayat</button>
                 @endif
             </div>
+            <div class="logs-search">
+                <input id="logs-search" type="search" aria-label="Cari riwayat scan"
+                    maxlength="255" placeholder="Cari waktu, UID, nama member, hasil, atau keterangan scan...">
+            </div>
             <div class="print-only">
                 <p>Sinergi Pool Member - Riwayat Scan</p>
             </div>
             <div class="table-wrap">
-                <table>
+                <table class="logs-table @if (session('admin_role') === 'superadmin') has-actions @endif">
                     <thead>
                         <tr>
                             <th>Waktu</th>
@@ -940,6 +994,9 @@
                             <th>Member</th>
                             <th>Hasil</th>
                             <th>Keterangan</th>
+                            @if (session('admin_role') === 'superadmin')
+                                <th>Aksi</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody id="logs"></tbody>
@@ -965,6 +1022,40 @@
             </div>
         </div>
         @if (session('admin_role') === 'superadmin')
+            <div id="edit-log-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="edit-log-title">
+                    <h2 id="edit-log-title">Update Riwayat Scan</h2>
+                    <p class="hint">Perubahan riwayat tidak mengubah jumlah scan paket member.</p>
+                    <form id="edit-log-form" onsubmit="submitLogUpdate(event)">
+                        <label for="edit-log-scanned-at">Waktu scan</label>
+                        <input id="edit-log-scanned-at" name="scanned_at" type="datetime-local" required>
+                        <label for="edit-log-uid">NFC UID</label>
+                        <input id="edit-log-uid" name="nfc_uid" maxlength="255" required>
+                        <label for="edit-log-result">Hasil</label>
+                        <input id="edit-log-result" name="result" maxlength="255" required>
+                        <label for="edit-log-reason">Keterangan</label>
+                        <input id="edit-log-reason" name="reason" maxlength="255">
+                        <div class="form-actions">
+                            <button type="submit">Simpan Perubahan</button>
+                            <button type="button" class="secondary" onclick="closeEditLogModal()">Batal</button>
+                        </div>
+                    </form>
+                    <div id="edit-log-result-message"></div>
+                </div>
+            </div>
+            <div id="delete-log-modal" class="modal" aria-hidden="true">
+                <div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="delete-log-title">
+                    <h2 id="delete-log-title">Hapus Riwayat Scan?</h2>
+                    <p id="delete-log-message" class="hint"></p>
+                    <p class="hint">Menghapus riwayat tidak mengubah jumlah scan paket member.</p>
+                    <div class="form-actions">
+                        <button id="confirm-delete-log-button" type="button" class="delete"
+                            onclick="confirmDeleteLog()">Ya, Hapus</button>
+                        <button type="button" class="secondary" onclick="closeDeleteLogModal()">Batal</button>
+                    </div>
+                    <div id="delete-log-result"></div>
+                </div>
+            </div>
             <div id="delete-logs-modal" class="modal" aria-hidden="true">
                 <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-logs-title">
                     <h2 id="delete-logs-title">Hapus Riwayat Scan</h2>
@@ -1007,6 +1098,10 @@
             </div>
         </div>
     </div>
+    <script>
+        window.canDeleteMembers = @json(session('admin_role') === 'superadmin');
+        window.canManageScanLogs = @json(session('admin_role') === 'superadmin');
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/js/bootstrap-datepicker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/locales/bootstrap-datepicker.id.min.js"></script>

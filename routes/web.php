@@ -26,4 +26,6 @@ Route::middleware('admin')->group(function () {
   Route::get('/api/logs', [PoolController::class, 'logs']);
   Route::get('/api/logs/export', [PoolController::class, 'exportLogs']);
   Route::delete('/api/logs', [PoolController::class, 'destroyLogs']);
+  Route::put('/api/logs/{log}', [PoolController::class, 'updateLog']);
+  Route::delete('/api/logs/{log}', [PoolController::class, 'destroyLog']);
 });
